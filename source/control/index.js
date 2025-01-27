@@ -1,8 +1,8 @@
 var utils = require("../lib/utils");
 var log = require("../lib/log");
-var fs = require("fs");
-var Child = require("child_process");
-const { set } = require("mongoose");
+const fs = require("fs");
+const Child = require("child_process");
+const path = require("path");
 
 var acceptType = [
     "message",
@@ -59,10 +59,8 @@ module.exports = function () {
     var { systemOptions, facebookAPIsOptions } = global.mira.config;
 
     if (systemOptions.autoLoadPlugins.enable) {
-        var path = require("path");
-        var fs = require("fs");
-        var dir = path.resolve(global.mira.dir, "plugins");
-        var plugins = fs.readdirSync(dir).filter(item => item.endsWith(".js") && !systemOptions.autoLoadPlugins.ignore.includes(item));
+        const dir = path.resolve(global.mira.dir, "plugins");
+        const plugins = fs.readdirSync(dir).filter(item => item.endsWith(".js") && !systemOptions.autoLoadPlugins.ignore.includes(item));
 
         function LoadPlugin(pluginPath) {
             delete require.cache[pluginPath];
@@ -73,67 +71,53 @@ module.exports = function () {
             }
             try {
                 var pl = new (require(pluginPath))();
-                var Options = pl.Options;
-                var Langs = pl.Langs;
-                var Reply = pl.Reply;
-                var React = pl.React;
-                var Schedule = pl.Schedule;
-                var Events = pl.Events;
-                var Main = pl.Main;
-                if (utils.getType(Options) !== "Object")
-                    throw error("Object is required in Options");
+                const { Options, Langs, Reply, React, Schedule, Events, Main } = pl;
+                if (utils.getType(Options) !== "Object") throw error("Object is required in Options");
 
-                for (var item of Object.entries(requiredOptions)) {
-                    if (item[1][1] && !Options[item[0]].toString() || utils.getType(Options[item[0]]) !== item[1][0])
-                        throw error(item[0] + " is not accepted.");
-                }
-
-                if (typeof Main !== "function")
-                    throw error("function is required in Main.");
-
-                if (utils.getType(Langs) !== "Object")
-                    throw error("Object is required in " + lang);
-
-                for (var lang in Langs) {
-                    if (utils.getType(Langs[lang]) !== "Object")
-                        throw error("Object is required in " + lang);
-
-                    for (var content in Langs[lang]) {
-                        if (utils.getType(Langs[lang][content]) !== "String")
-                            throw error("String is required in " + content);
+                for (const [key, [type, required]] of Object.entries(requiredOptions)) {
+                    if (required && !Options[key].toString() || utils.getType(Options[key]) !== type) {
+                        throw error(`${key} is not accepted.`);
                     }
                 }
 
-                if (Reply && typeof Reply !== "function")
-                    throw error("Reply must be function");
-                if (React && typeof React !== "function")
-                    throw error("React must be function");
-                if (Schedule && typeof Schedule !== "function")
-                    throw error("Schedule must be function");
-                if (Events && typeof Events !== "function")
-                    throw error("Events must be function");
+                if (typeof Main !== "function") throw error("function is required in Main.");
+
+                if (utils.getType(Langs) !== "Object") throw error("Object is required in Langs");
+
+                for (const lang in Langs) {
+                    if (utils.getType(Langs[lang]) !== "Object") throw error(`Object is required in ${lang}`);
+
+                    for (const content in Langs[lang]) {
+                        if (utils.getType(Langs[lang][content]) !== "String") throw error(`String is required in ${content}`);
+                    }
+                }
+
+                if (Reply && typeof Reply !== "function") throw error("Reply must be function");
+                if (React && typeof React !== "function") throw error("React must be function");
+                if (Schedule && typeof Schedule !== "function") throw error("Schedule must be function");
+                if (Events && typeof Events !== "function") throw error("Events must be function");
 
                 if (Options.dependencies) {
-                    pl.dependencies = {}
-                    var execOptions = {
+                    pl.dependencies = {};
+                    const execOptions = {
                         cwd: dir,
                         stdio: "inherit",
                         shell: true
-                    }
-                    for (var dependencie of Options.dependencies) {
+                    };
+                    for (const dependency of Options.dependencies) {
                         try {
-                            pl.dependencies[dependencie] = require(dependencie);
+                            pl.dependencies[dependency] = require(dependency);
                         } catch (error) {
-                            Child.execSync("npm install " + dependencie, execOptions);
-                            pl.dependencies[dependencie] = require(dependencie);
+                            Child.execSync(`npm install ${dependency}`, execOptions);
+                            pl.dependencies[dependency] = require(dependency);
                         }
                     }
                 }
 
                 if (Options.envConfig) {
-                    var envConfig = {}
-                    envConfig[Options.name] = {}
-                    for (var env in Options.envConfig) {
+                    const envConfig = {};
+                    envConfig[Options.name] = {};
+                    for (const env in Options.envConfig) {
                         envConfig[Options.name][env] = Options.envConfig[env];
                     }
                     global.mira.configCommands = envConfig;
@@ -142,7 +126,7 @@ module.exports = function () {
                 global.modules.cmds = global.modules.cmds.filter(item => item[0] !== Options.name);
                 global.modules.cmds.push([Options.name, pl]);
             } catch (error) {
-                console.log(error);
+                log.error("control.modules.loadError", error.message || error);
             }
         }
 

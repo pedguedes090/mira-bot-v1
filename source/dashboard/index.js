@@ -14,6 +14,7 @@ var ExpressSession = require("express-session")({
 });
 var Os = require("os");
 var fs = require("fs");
+var { isAuthenticated } = require("../lib/utils");
 
 var App = Express();
 
@@ -39,14 +40,14 @@ if (global.mira.config.dashboardOptions.resetAccount) {
 
     var message =
         "==========================" +
-        "\n• Email: " + templMail +
-        "\n• Password: " + templPass +
-        "\n• Timestamp: " + Date.now() +
-        "\n==========================";
+        "\\n• Email: " + templMail +
+        "\\n• Password: " + templPass +
+        "\\n• Timestamp: " + Date.now() +
+        "\\n==========================";
     adminIDs.map(id => Messenger.send(message, id, _ => {}));
 }
 
-App.post("/", function (req, res) {
+App.post("/api/auth", function (req, res) {
     var { dashboardOptions } = global.mira.config;
     var body = req.body;
     var status, resData;
@@ -97,6 +98,22 @@ App.get("/", function (req, res) {
         res.redirect("/login");
 });
 
+App.get("/dashboard", function (req, res) {
+    if (isAuthenticated(req))
+        res.render("dashboard");
+    else
+        res.redirect("/login");
+});
+
+App.get("/api/plugins", function (req, res) {
+    if (isAuthenticated(req)) {
+        // Logic to fetch and return plugin data
+        res.json({ plugins: global.modules.cmds });
+    } else {
+        res.status(403).json({ message: "Unauthorized" });
+    }
+});
+
 App.use(function (req, res) {
     res.status(404);
     res.render("404");
@@ -112,7 +129,7 @@ for (var network in interfaces) {
     info = interfaces[network].find(item => !item.internal && item.family === "IPv4");
 }
 
-var Server = App.listen(global.mira.config.dashboardOptions.port, _ => {
+var Server = App.listen(global.mira.config.dashboardOptions.port, () => {
     var port = Server.address().port;
 
     log.info("dashboard.port", port);
@@ -120,4 +137,3 @@ var Server = App.listen(global.mira.config.dashboardOptions.port, _ => {
     log.info("dashboard.host", "http://" + info.address + ":" + port);
     log.wall();
 });
-

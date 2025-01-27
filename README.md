@@ -9,6 +9,7 @@
 - **Tự động hóa tác vụ**: Mira Bot có thể tự động hóa nhiều tác vụ lặp đi lặp lại, giúp tiết kiệm thời gian và công sức.
 - **Tích hợp dễ dàng**: Bot có thể được tổng hợp nhiều nền tảng và dịch vụ khác nhau và gửi về nền tảng facebook.
 - **Tùy chỉnh cao**: Người dùng có thể dễ dàng tùy chỉnh các chức năng của bot theo nhu cầu của mình.
+- **Hỗ trợ Plugin**: Đã thêm 20 plugin mới để mở rộng chức năng của bot, bao gồm bảo mật, xử lý dữ liệu, và xác thực.
 
 ## Ưu điểm
 
@@ -33,7 +34,8 @@
     cd mira-bot-v1
     npm install
     ```
-3. Chạy bot:
+3. Cấu hình các tùy chọn cần thiết trong `config.json`.
+4. Chạy bot:
     ```bash
     npm start
     ```
@@ -102,6 +104,9 @@ Bạn có thể tinh chỉnh cấu hình tại tệp [config.json](config.json).
 - **DataBase**: Cấu hình cơ sở dữ liệu.
   - **type**: Loại cơ sở dữ liệu.
   - **mongoURI**: URI kết nối MongoDB.
+- **PluginOptions**: Cấu hình cho các plugin.
+  - **security**: Các tùy chọn bảo mật cho plugin.
+  - **dataHandling**: Các tùy chọn xử lý dữ liệu cho plugin.
 
 ## Demo
 
@@ -115,4 +120,3 @@ Chúng tôi hoan nghênh mọi đóng góp từ cộng đồng. Nếu bạn mu�
 ## Giấy phép
 
 Dự án này được cấp phép theo giấy phép MIT. Xem tệp [LICENSE](LICENSE) để biết thêm chi tiết.
-

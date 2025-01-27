@@ -1,41 +1,45 @@
-process.on("unhandledRejection", console.log);
-process.on("uncaughtException", console.log);
+process.on("unhandledRejection", error => console.error("Unhandled Rejection:", error));
+process.on("uncaughtException", error => console.error("Uncaught Exception:", error));
 
-var log = require("./lib/log");
-var utils = require("./lib/utils");
-var config = require("../config.json");
+const log = require("./lib/log");
+const utils = require("./lib/utils");
+const config = require("../config.json");
 
-var fs = require("fs");
-var path = require("path");
-var axios = require("axios");
+const fs = require("fs");
+const path = require("path");
+const axios = require("axios");
 
-var dirConfig = path.resolve(__dirname, "..", "config.json");
-var dirConfigCommands = path.resolve(__dirname, "..", "configCommands.json");
+const dirConfig = path.resolve(__dirname, "..", "config.json");
+const dirConfigCommands = path.resolve(__dirname, "..", "configCommands.json");
 
 function mergeObjects(target, source) {
-    for (var key in source) {
-        if (source.hasOwnProperty(key)) {
-            if (source[key] === null || source[key] === undefined)
+    for (const key in source) {
+        if (Object.prototype.hasOwnProperty.call(source, key)) {
+            if (source[key] === null || source[key] === undefined) {
                 delete target[key];
-            else if (typeof source[key] === "object" && !Array.isArray(source[key]) && source[key] !== null) {
-                if (!target[key] || typeof target[key] !== "object" || Array.isArray(target[key]))
-                    target[key] = {}
+            } else if (typeof source[key] === "object" && !Array.isArray(source[key])) {
+                if (!target[key] || typeof target[key] !== "object" || Array.isArray(target[key])) {
+                    target[key] = {};
+                }
                 mergeObjects(target[key], source[key]);
-            } else
+            } else {
                 target[key] = source[key];
+            }
         }
     }
     return target;
 }
 
 function mergeObjectsPrimitives(target, source) {
-    for (var key in source) {
-        if (source.hasOwnProperty(key)) {
+    for (const key in source) {
+        if (Object.prototype.hasOwnProperty.call(source, key)) {
             if (typeof source[key] !== "object" || Array.isArray(source[key]) || source[key] === null) {
-                if (target.hasOwnProperty(key))
+                if (Object.prototype.hasOwnProperty.call(target, key)) {
                     target[key] = source[key];
-            } else if (typeof target[key] === "object" && target[key] !== null && !Array.isArray(target[key]))
+                }
+            } else if (typeof target[key] === "object" && target[key] !== null && !Array.isArray(target[key])) {
                 mergeObjectsPrimitives(target[key], source[key]);
+            }
         }
     }
     return target;
@@ -82,9 +86,11 @@ global.database = {
 }
 
 function watchAndDeleteCache(dir) {
-    fs.watch(dir, type => type ===  "change" ? (function () {
-        delete require.cache[dir];
-    })() : null);
+    fs.watch(dir, (eventType) => {
+        if (eventType === "change") {
+            delete require.cache[dir];
+        }
+    });
 }
 
 watchAndDeleteCache(dirConfig);
@@ -121,19 +127,24 @@ if (config.systemOptions.autoRestart.enable && parseInt(config.systemOptions.aut
 }
 
 (async () => {
-    log.wall();
-    var currentVersion = require("../package.json").version;
-    var lastVersion = (await axios.get("https://raw.githubusercontent.com/GiaKhang1810/mira-bot-v1/main/package.json")).data.version;
-    if (compare(lastVersion, currentVersion))
-        log.warn("updater.newVersion", lastVersion, "https://github.com/GiaKhang1810/mira-bot-v1/");
+    try {
+        log.wall();
+        const currentVersion = require("../package.json").version;
+        const lastVersion = (await axios.get("https://raw.githubusercontent.com/GiaKhang1810/mira-bot-v1/main/package.json")).data.version;
+        if (compare(lastVersion, currentVersion)) {
+            log.warn("updater.newVersion", lastVersion, "https://github.com/GiaKhang1810/mira-bot-v1/");
+        }
 
-    await require("./apis")();
-    if (config.facebookAPIsOptions.autoRefreshState) {
-        fs.writeFileSync(global.mira.dir + "/" + config.facebookAccountOptions.facebookState, JSON.stringify(global.mira.apis.getAppState(), null, 2));
-        log.info("facebook.refreshCookie", config.facebookAccountOptions.facebookState);
+        await require("./apis")();
+        if (config.facebookAPIsOptions.autoRefreshState) {
+            fs.writeFileSync(path.join(global.mira.dir, config.facebookAccountOptions.facebookState), JSON.stringify(global.mira.apis.getAppState(), null, 2));
+            log.info("facebook.refreshCookie", config.facebookAccountOptions.facebookState);
+        }
+        log.wall();
+        await require("./database")();
+        await require("./control")();
+        return require("./dashboard");
+    } catch (error) {
+        console.error("Initialization error:", error);
     }
-    log.wall();
-    await require("./database")();
-    await require("./control")();
-    return require("./dashboard");
 })();
